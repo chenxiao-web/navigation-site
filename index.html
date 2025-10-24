@@ -1,164 +1,836 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>找实习 - 带你找</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <meta name="description" content="找实习 - 看看哪儿有实习的向导">
-    <style>
-        @media (max-width: 640px) {
-            .nav-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI质检系统数据看板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  
+  <!-- 配置Tailwind -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#FF4D4F',
+            dark: '#1D2129',
+            'dark-light': '#272E3B',
+            'dark-lighter': '#343E4F'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      .text-gradient {
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+      .animate-pulse-slow {
+        animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .dashboard-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      }
+      .stat-card-hover {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      .stat-card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(22, 93, 255, 0.15);
+      }
+    }
+  </style>
 </head>
-<body class="bg-gray-100">
-    <!-- 顶部导航栏 -->
-    <header class="bg-white shadow-sm">
-        <nav class="container mx-auto px-4 py-3">
-            <div class="flex justify-between items-center">
-                <a href="/" class="text-xl font-bold text-gray-800">找实习导航</a>
-                <div class="hidden sm:flex space-x-4">
-                    <a href="#" class="text-gray-600 hover:text-gray-900">首页</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-900">关于我们</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-900">联系方式</a>
-                </div>
-                <button class="sm:hidden text-gray-600 hover:text-gray-900">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-            </div>
-        </nav>
-    </header>
 
-    <!-- 搜索区域 -->
-    <div class="bg-white py-8">
-        <div class="container mx-auto px-4">
-            <div class="max-w-2xl mx-auto">
-                <input type="text" placeholder="搜索资源..." class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
+<body class="bg-dark text-gray-100 min-h-screen">
+  <!-- 顶部导航栏 -->
+  <header class="bg-dark-light shadow-md fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-line-chart text-primary text-2xl"></i>
+        <h1 class="text-xl font-bold tracking-wide">AI质检系统数据看板</h1>
+      </div>
+      
+      <div class="flex items-center space-x-6">
+        <div class="hidden md:flex items-center space-x-4">
+          <div class="text-sm text-gray-400">
+            <span id="current-time" class="text-gray-300"></span>
+          </div>
+          <div class="text-sm text-gray-400">
+            登录用户: <span id="login-user" class="text-primary">管理员</span>
+          </div>
         </div>
+        
+        <div class="relative">
+          <button class="w-10 h-10 rounded-full bg-dark-lighter flex items-center justify-center hover:bg-primary/20 transition-colors">
+            <i class="fa fa-user text-gray-400"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-4 pt-20 pb-10">
+    <!-- 筛选区域 - 已更新工厂选择默认值为LA工厂 -->
+    <div class="bg-dark-light rounded-lg p-4 mb-6 card-shadow">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">工厂选择</label>
+          <select class="w-full bg-dark-lighter border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+            <option selected>LA工厂</option> <!-- 默认选中LA工厂 -->
+            <option>上海工厂</option>
+            <option>北京工厂</option>
+            <option>广州工厂</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">产线选择</label>
+          <select class="w-full bg-dark-lighter border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+            <option>全部产线</option>
+            <option>产线A</option>
+            <option>产线B</option>
+            <option>产线C</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">日期选择</label>
+          <input type="date" class="w-full bg-dark-lighter border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" value="2025-10-24">
+        </div>
+      </div>
     </div>
 
-    <!-- 主要内容区域 -->
-    <main class="container mx-auto px-4 py-8">
-        <!-- 热门导航 -->
-        <section class="mb-8">
-            <h2 class="text-2xl font-bold mb-4">热门实习站</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="#" class="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                    <h3 class="font-semibold mb-2">学习资源</h3>
-                    <p class="text-gray-600 text-sm">各类优质学习平台和教程资源</p>
-                </a>
-                <a href="#" class="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                    <h3 class="font-semibold mb-2">工具软件</h3>
-                    <p class="text-gray-600 text-sm">实用的在线工具和软件推荐</p>
-                </a>
-                <a href="#" class="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                    <h3 class="font-semibold mb-2">技术博客</h3>
-                    <p class="text-gray-600 text-sm">优质的技术文章和博客分享</p>
-                </a>
-                <a href="#" class="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                    <h3 class="font-semibold mb-2">资源下载</h3>
-                    <p class="text-gray-600 text-sm">精选的资源下载网站导航</p>
-                </a>
+    <!-- 系统效能概览 - 已更新所有参考数据 -->
+    <section class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">系统效能概览</h2>
+        <button class="text-primary text-sm hover:underline flex items-center">
+          查看详情 <i class="fa fa-angle-right ml-1"></i>
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+        <!-- 1.1 生产数量 - 参考数据13485 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">生产数量</p>
+              <h3 class="text-2xl font-bold mt-1" id="production-count">13,485</h3> <!-- 固定参考数据 -->
             </div>
-        </section>
-
-        <!-- 分类导航 -->
-        <section>
-            <h2 class="text-2xl font-bold mb-4">实习生宝箱</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- 开发工具 -->
-                <div class="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 class="text-lg font-semibold mb-4">AI工具</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Deepseek</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">元宝</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">豆包</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">千问</a>
-                    </div>
-                </div>
-
-                <!-- 设计资源 -->
-                <div class="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 class="text-lg font-semibold mb-4">办公利器</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Figma</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Dribbble</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Behance</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">UI8</a>
-                    </div>
-                </div>
-
-                <!-- 学习平台 -->
-                <div class="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 class="text-lg font-semibold mb-4">学习资源</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <a href="#" class="text-blue-600 hover:text-blue-800">掘金</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">CSDN</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">慕课网</a>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">极客时间</a>
-                    </div>
-                </div>
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <i class="fa fa-cubes text-primary"></i>
             </div>
-        </section>
-    </main>
-
-    <!-- 页脚 -->
-    <footer class="bg-gray-800 text-white py-8">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">关于我们</h3>
-                    <p class="text-gray-400">带你找实习，早日成牛马。</p>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">联系方式</h3>
-                    <p class="text-gray-400">邮箱：cx19912011@gmail.com</p>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">友情链接</h3>
-                    <div class="flex flex-wrap gap-4">
-                        <a href="#" class="text-gray-400 hover:text-white">合作伙伴</a>
-                        <a href="#" class="text-gray-400 hover:text-white">友情链接</a>
-                    </div>
-                </div>
-            </div>
-            <div class="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400">
-                <p>&copy; 2025 找实习导航. All rights reserved.</p>
-            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-success flex items-center">
+              <i class="fa fa-arrow-up mr-1"></i> 2.1%
+            </span>
+            <span class="text-gray-500 ml-2">较昨日</span>
+          </div>
         </div>
-    </footer>
-
-    <!-- 移动端菜单 -->
-    <div class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50" id="mobile-menu">
-        <div class="bg-white h-full w-64 p-4">
-            <div class="flex justify-between items-center mb-8">
-                <span class="text-xl font-bold">菜单</span>
-                <button class="text-gray-600" onclick="document.getElementById('mobile-menu').classList.add('hidden')">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+        
+        <!-- 1.2 新增区域照片数量 - 生产数量的48倍=13485*48=647280 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">新增区域照片数量</p>
+              <h3 class="text-2xl font-bold mt-1" id="new-photos-count">647,280</h3> <!-- 13485*48计算结果 -->
             </div>
-            <nav class="space-y-4">
-                <a href="#" class="block text-gray-600 hover:text-gray-900">首页</a>
-                <a href="#" class="block text-gray-600 hover:text-gray-900">关于我们</a>
-                <a href="#" class="block text-gray-600 hover:text-gray-900">联系方式</a>
-            </nav>
+            <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center">
+              <i class="fa fa-camera text-secondary"></i>
+            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-success flex items-center">
+              <i class="fa fa-arrow-up mr-1"></i> 2.8%
+            </span>
+            <span class="text-gray-500 ml-2">较昨日</span>
+          </div>
         </div>
-    </div>
+        
+        <!-- 1.3 复核区域照片数量 - 生产数量的22%=13485*0.22=2966.7→取整2967 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">复核区域照片数量</p>
+              <h3 class="text-2xl font-bold mt-1" id="review-photos-count">2,967</h3> <!-- 13485*22%取整结果 -->
+            </div>
+            <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
+              <i class="fa fa-refresh text-warning"></i>
+            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-danger flex items-center">
+              <i class="fa fa-arrow-up mr-1"></i> 1.5%
+            </span>
+            <span class="text-gray-500 ml-2">较昨日</span>
+          </div>
+        </div>
+        
+        <!-- 1.5 区域照片判定操作率 - 参考数据5%（整数） -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">区域照片判定操作率</p>
+              <h3 class="text-2xl font-bold mt-1" id="operation-rate">5%</h3> <!-- 固定参考数据 -->
+            </div>
+            <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+              <i class="fa fa-check-square-o text-success"></i>
+            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-success flex items-center">
+              <i class="fa fa-arrow-up mr-1"></i> 0.3%
+            </span>
+            <span class="text-gray-500 ml-2">较昨日</span>
+          </div>
+        </div>
+        
+        <!-- 1.6 单展示成本 - 参考数据0.0052（波动10%范围：0.00468-0.00572） -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">单展示成本</p>
+              <h3 class="text-2xl font-bold mt-1" id="display-cost">¥0.0052</h3> <!-- 固定参考数据 -->
+            </div>
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <i class="fa fa-eye text-primary"></i>
+            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-success flex items-center">
+              <i class="fa fa-arrow-down mr-1"></i> 0.8%
+            </span>
+            <span class="text-gray-500 ml-2">较昨日</span>
+          </div>
+        </div>
+        
+        <!-- 1.7 单审核成本 - 30*24*3/13485≈2160/13485≈0.1599 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">单审核成本</p>
+              <h3 class="text-2xl font-bold mt-1" id="review-cost">¥0.16</h3> <!-- 30*24*3/13485计算结果（保留两位小数） -->
+            </div>
+            <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center">
+              <i class="fa fa-check-circle-o text-secondary"></i>
+            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-danger flex items-center">
+              <i class="fa fa-arrow-up mr-1"></i> 0.5%
+            </span>
+            <span class="text-gray-500 ml-2">较昨日</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 1.4 复核区域照片数量变化 - 每小时5000张左右，波动30%（3500-6500） -->
+      <div class="bg-dark-light rounded-lg p-4 card-shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-semibold">复核区域照片数量变化</h3>
+          <div class="text-sm text-gray-400">今日截止当前，以小时为单位（参考范围：3500-6500张/小时）</div>
+        </div>
+        <div class="h-64">
+          <canvas id="review-change-chart"></canvas>
+        </div>
+      </div>
+    </section>
 
-    <script>
-        // 移动端菜单切换
-        document.querySelector('button.sm\\:hidden').addEventListener('click', function() {
-            document.getElementById('mobile-menu').classList.remove('hidden');
-        });
-    </script>
+    <!-- 实时生产数据 - 已更新所有参考数据 -->
+    <section class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">实时生产数据</h2>
+        <button class="text-primary text-sm hover:underline flex items-center">
+          查看详情 <i class="fa fa-angle-right ml-1"></i>
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- 2.1 当前生产节拍 - 参考数据10秒 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">当前生产节拍</p>
+              <h3 class="text-2xl font-bold mt-1" id="production-rate">10秒/件</h3> <!-- 固定参考数据 -->
+            </div>
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <i class="fa fa-clock-o text-primary"></i>
+            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-success flex items-center">
+              <i class="fa fa-arrow-down mr-1"></i> 0.5秒
+            </span>
+            <span class="text-gray-500 ml-2">较平均</span>
+          </div>
+        </div>
+        
+        <!-- 2.2 在线客户端数量 - 参考数据2 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">在线客户端数量</p>
+              <h3 class="text-2xl font-bold mt-1" id="online-clients">2</h3> <!-- 固定参考数据 -->
+            </div>
+            <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+              <i class="fa fa-desktop text-success"></i>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <div class="flex -space-x-2">
+              <div class="w-6 h-6 rounded-full bg-primary border-2 border-dark-light"></div>
+              <div class="w-6 h-6 rounded-full bg-secondary border-2 border-dark-light"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 2.3 系统分发情况 - 参考数据A级1、B级12、C级12、D级7 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">系统分发情况</p>
+              <h3 class="text-lg font-bold mt-1">各等级分布</h3>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
+              <i class="fa fa-random text-warning"></i>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+            <div class="text-center p-2 bg-dark-lighter rounded">
+              <div class="text-xs text-gray-400">A级</div>
+              <div class="text-lg font-bold text-primary">1</div> <!-- 固定参考数据 -->
+            </div>
+            <div class="text-center p-2 bg-dark-lighter rounded">
+              <div class="text-xs text-gray-400">B级</div>
+              <div class="text-lg font-bold text-secondary">12</div> <!-- 固定参考数据 -->
+            </div>
+            <div class="text-center p-2 bg-dark-lighter rounded">
+              <div class="text-xs text-gray-400">C级</div>
+              <div class="text-lg font-bold text-warning">12</div> <!-- 固定参考数据 -->
+            </div>
+            <div class="text-center p-2 bg-dark-lighter rounded">
+              <div class="text-xs text-gray-400">D级</div>
+              <div class="text-lg font-bold text-danger">7</div> <!-- 固定参考数据 -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 2.4 缺陷判定完成率 - 参考数据85%左右，波动10%（76.5%-93.5%） -->
+      <div class="bg-dark-light rounded-lg p-4 card-shadow">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-semibold">缺陷判定完成率</h3>
+          <div class="text-sm text-gray-400">过去七天趋势（参考范围：76.5%-93.5%）</div>
+        </div>
+        <div class="h-64">
+          <canvas id="defect-completion-chart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI模型 - 按要求保持不变 -->
+    <section class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">AI模型</h2>
+        <button class="text-primary text-sm hover:underline flex items-center">
+          查看详情 <i class="fa fa-angle-right ml-1"></i>
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- 有模型区域数量 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">有模型区域数量</p>
+              <h3 class="text-2xl font-bold mt-1" id="model-areas">148</h3>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <i class="fa fa-cogs text-primary"></i>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mt-2">
+            <div class="text-center p-1 bg-dark-lighter rounded text-xs">
+              <div class="text-gray-400">产线A</div>
+              <div class="font-bold text-primary">52</div>
+            </div>
+            <div class="text-center p-1 bg-dark-lighter rounded text-xs">
+              <div class="text-gray-400">产线B</div>
+              <div class="font-bold text-secondary">47</div>
+            </div>
+            <div class="text-center p-1 bg-dark-lighter rounded text-xs">
+              <div class="text-gray-400">产线C</div>
+              <div class="font-bold text-warning">49</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 一致率低于99%的模型数量 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">一致率低于99%的模型数量</p>
+              <h3 class="text-2xl font-bold mt-1 text-danger" id="low-accuracy-models">8</h3>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center">
+              <i class="fa fa-exclamation-triangle text-danger"></i>
+            </div>
+          </div>
+          <div class="flex items-center text-sm">
+            <span class="text-danger flex items-center">
+              <i class="fa fa-arrow-up mr-1"></i> 2个
+            </span>
+            <span class="text-gray-500 ml-2">较昨日</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- 判定一致率 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-semibold">判定一致率</h3>
+            <div class="text-sm text-gray-400">各产线七日趋势</div>
+          </div>
+          <div class="h-64">
+            <canvas id="accuracy-rate-chart"></canvas>
+          </div>
+        </div>
+        
+        <!-- 各模型判定一致率 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-semibold">各模型判定一致率</h3>
+            <div class="text-sm text-gray-400">七日趋势</div>
+          </div>
+          <div class="h-64">
+            <canvas id="model-accuracy-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 远程审核 - 按要求保持不变 -->
+    <section class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">远程审核</h2>
+        <button class="text-primary text-sm hover:underline flex items-center">
+          查看详情 <i class="fa fa-angle-right ml-1"></i>
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- 在线审核员数量、姓名 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">在线审核员</p>
+              <h3 class="text-2xl font-bold mt-1" id="online-auditors">12</h3>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <i class="fa fa-users text-primary"></i>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <span class="px-2 py-1 bg-dark-lighter rounded text-xs">张三</span>
+            <span class="px-2 py-1 bg-dark-lighter rounded text-xs">李四</span>
+            <span class="px-2 py-1 bg-dark-lighter rounded text-xs">王五</span>
+            <span class="px-2 py-1 bg-dark-lighter rounded text-xs">赵六</span>
+            <span class="px-2 py-1 bg-dark-lighter rounded text-xs">孙七</span>
+            <span class="px-2 py-1 bg-dark-lighter rounded text-xs">+7人</span>
+          </div>
+        </div>
+        
+        <!-- 审核员长时间未操作次数 -->
+        <div class="bg-dark-light rounded-lg p-4 card-shadow stat-card-hover">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-sm text-gray-400">长时间未操作审核员</p>
+              <h3 class="text-2xl font-bold mt-1 text-warning" id="idle-auditors">2</h3>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
+              <i class="fa fa-clock-o text-warning"></i>
+            </div>
+          </div>
+          <div class="space-y-1 mt-2">
+            <div class="flex justify-between text-sm">
+              <span>钱八</span>
+              <span class="text-warning">3次</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span>周九</span>
+              <span class="text-warning">2次</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 审核员判定操作量等 -->
+      <div class="bg-dark-light rounded-lg p-4 card-shadow">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-semibold">审核员工作质量</h3>
+          <div class="text-sm text-gray-400">今日操作统计</div>
+        </div>
+        <div class="h-80">
+          <canvas id="auditor-performance-chart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // 更新当前时间
+    function updateCurrentTime() {
+      const now = new Date();
+      const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      document.getElementById('current-time').textContent = now.toLocaleString('zh-CN', options);
+    }
+    updateCurrentTime();
+    setInterval(updateCurrentTime, 1000);
+
+    // 图表通用配置
+    const chartDefaults = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color: '#C9CDD4',
+            font: {
+              size: 11
+            },
+            boxWidth: 12
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(29, 33, 41, 0.9)',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 10,
+          bodyFont: {
+            size: 12
+          },
+          titleFont: {
+            size: 12,
+            weight: 'bold'
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: 'rgba(255, 255, 255, 0.05)'
+          },
+          ticks: {
+            color: '#86909C'
+          }
+        },
+        y: {
+          grid: {
+            color: 'rgba(255, 255, 255, 0.05)'
+          },
+          ticks: {
+            color: '#86909C'
+          }
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      },
+      animations: {
+        tension: {
+          duration: 1000,
+          easing: 'linear'
+        }
+      }
+    };
+
+    // 1.4 复核区域照片数量变化折线图 - 数据调整为5000±30%范围
+    const reviewChangeCtx = document.getElementById('review-change-chart').getContext('2d');
+    const reviewChangeChart = new Chart(reviewChangeCtx, {
+      type: 'line',
+      data: {
+        labels: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
+        datasets: [{
+          label: '每小时复核照片数',
+          data: [4800, 5200, 4500, 5800, 3800, 5100, 4900, 6200, 5500, 4700], // 均在3500-6500范围内
+          borderColor: '#165DFF',
+          backgroundColor: 'rgba(22, 93, 255, 0.1)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          pointBackgroundColor: '#165DFF',
+          pointRadius: 3,
+          pointHoverRadius: 5
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        plugins: {
+          ...chartDefaults.plugins,
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+
+    // 2.4 缺陷判定完成率折线图 - 数据调整为85%±10%范围
+    const defectCompletionCtx = document.getElementById('defect-completion-chart').getContext('2d');
+    const defectCompletionChart = new Chart(defectCompletionCtx, {
+      type: 'line',
+      data: {
+        labels: ['10/18', '10/19', '10/20', '10/21', '10/22', '10/23', '10/24'],
+        datasets: [{
+          label: '缺陷判定完成率',
+          data: [82, 87, 84, 91, 88, 85, 86], // 均在76.5%-93.5%范围内
+          borderColor: '#36CFC9',
+          backgroundColor: 'rgba(54, 207, 201, 0.1)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          pointBackgroundColor: '#36CFC9',
+          pointRadius: 3,
+          pointHoverRadius: 5
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        scales: {
+          ...chartDefaults.scales,
+          y: {
+            ...chartDefaults.scales.y,
+            min: 75,
+            max: 95,
+            ticks: {
+              ...chartDefaults.scales.y.ticks,
+              callback: function(value) {
+                return value + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 3. 判定一致率折线图（保持不变）
+    const accuracyRateCtx = document.getElementById('accuracy-rate-chart').getContext('2d');
+    const accuracyRateChart = new Chart(accuracyRateCtx, {
+      type: 'line',
+      data: {
+        labels: ['10/18', '10/19', '10/20', '10/21', '10/22', '10/23', '10/24'],
+        datasets: [
+          {
+            label: '产线A',
+            data: [99.2, 99.1, 99.3, 99.0, 98.9, 99.2, 99.4],
+            borderColor: '#165DFF',
+            tension: 0.4,
+            borderWidth: 2,
+            pointBackgroundColor: '#165DFF',
+            pointRadius: 3,
+            pointHoverRadius: 5
+          },
+          {
+            label: '产线B',
+            data: [98.7, 98.9, 98.6, 99.0, 99.1, 98.8, 99.0],
+            borderColor: '#36CFC9',
+            tension: 0.4,
+            borderWidth: 2,
+            pointBackgroundColor: '#36CFC9',
+            pointRadius: 3,
+            pointHoverRadius: 5
+          },
+          {
+            label: '产线C',
+            data: [98.5, 98.3, 98.7, 98.4, 98.6, 98.8, 98.7],
+            borderColor: '#FAAD14',
+            tension: 0.4,
+            borderWidth: 2,
+            pointBackgroundColor: '#FAAD14',
+            pointRadius: 3,
+            pointHoverRadius: 5
+          }
+        ]
+      },
+      options: {
+        ...chartDefaults,
+        scales: {
+          ...chartDefaults.scales,
+          y: {
+            ...chartDefaults.scales.y,
+            min: 98,
+            max: 100,
+            ticks: {
+              ...chartDefaults.scales.y.ticks,
+              callback: function(value) {
+                return value + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 4. 各模型判定一致率折线图（保持不变）
+    const modelAccuracyCtx = document.getElementById('model-accuracy-chart').getContext('2d');
+    const modelAccuracyChart = new Chart(modelAccuracyCtx, {
+      type: 'line',
+      data: {
+        labels: ['10/18', '10/19', '10/20', '10/21', '10/22', '10/23', '10/24'],
+        datasets: [
+          {
+            label: '模型M1',
+            data: [99.6, 99.5, 99.7, 99.6, 99.8, 99.7, 99.8],
+            borderColor: '#165DFF',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3
+          },
+          {
+            label: '模型M2',
+            data: [99.3, 99.2, 99.4, 99.3, 99.5, 99.4, 99.5],
+            borderColor: '#36CFC9',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3
+          },
+          {
+            label: '模型M3',
+            data: [98.8, 98.7, 98.9, 98.8, 99.0, 98.9, 99.0],
+            borderColor: '#FAAD14',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3
+          },
+          {
+            label: '模型M4',
+            data: [98.5, 98.3, 98.4, 98.6, 98.5, 98.7, 98.6],
+            borderColor: '#FF4D4F',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3
+          }
+        ]
+      },
+      options: {
+        ...chartDefaults,
+        scales: {
+          ...chartDefaults.scales,
+          y: {
+            ...chartDefaults.scales.y,
+            min: 98,
+            max: 100,
+            ticks: {
+              ...chartDefaults.scales.y.ticks,
+              callback: function(value) {
+                return value + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 5. 审核员工作质量柱状图（保持不变）
+    const auditorPerformanceCtx = document.getElementById('auditor-performance-chart').getContext('2d');
+    const auditorPerformanceChart = new Chart(auditorPerformanceCtx, {
+      type: 'bar',
+      data: {
+        labels: ['张三', '李四', '王五', '赵六', '孙七', '钱八', '周九'],
+        datasets: [
+          {
+            label: '判定操作量',
+            data: [125, 142, 98, 115, 130, 85, 76],
+            backgroundColor: 'rgba(22, 93, 255, 0.7)',
+            barPercentage: 0.6,
+            categoryPercentage: 0.7
+          },
+          {
+            label: '缺陷操作量',
+            data: [32, 28, 21, 25, 30, 18, 15],
+            backgroundColor: 'rgba(54, 207, 201, 0.7)',
+            barPercentage: 0.6,
+            categoryPercentage: 0.7
+          }
+        ]
+      },
+      options: {
+        ...chartDefaults,
+        scales: {
+          ...chartDefaults.scales,
+          x: {
+            ...chartDefaults.scales.x,
+            stacked: false
+          },
+          y: {
+            ...chartDefaults.scales.y,
+            stacked: false
+          }
+        }
+      }
+    });
+
+    // 模拟数据更新（仅小范围波动，保持参考数据稳定性）
+    function simulateDataUpdates() {
+      // 随机增减数值的函数（缩小波动范围，避免偏离参考值过多）
+      function randomChange(current, range = 2) {
+        const change = Math.floor(Math.random() * (range * 2 + 1)) - range;
+        return Math.max(0, current + change);
+      }
+
+      // 生产数量（参考值13485，波动±2）
+      const productionCount = parseInt(document.getElementById('production-count').textContent.replace(',', ''));
+      document.getElementById('production-count').textContent = randomChange(productionCount, 2).toLocaleString();
+      
+      // 新增区域照片数量（参考值647280，波动±50）
+      const newPhotosCount = parseInt(document.getElementById('new-photos-count').textContent.replace(',', ''));
+      document.getElementById('new-photos-count').textContent = randomChange(newPhotosCount, 50).toLocaleString();
+      
+      // 复核区域照片数量（参考值2967，波动±3）
+      const reviewPhotosCount = parseInt(document.getElementById('review-photos-count').textContent.replace(',', ''));
+      document.getElementById('review-photos-count').textContent = randomChange(reviewPhotosCount, 3).toLocaleString();
+      
+      // 复核数量变化图表（小范围波动）
+      if (Math.random() > 0.7) {
+        const lastValue = reviewChangeChart.data.datasets[0].data.pop();
+        const newValue = randomChange(lastValue, 100); // 波动±100，保持在3500-6500范围
+        reviewChangeChart.data.datasets[0].data.push(newValue);
+        reviewChangeChart.update();
+      }
+    }
+    
+    // 每5秒模拟数据更新
+    setInterval(simulateDataUpdates, 5000);
+  </script>
 </body>
 </html>
